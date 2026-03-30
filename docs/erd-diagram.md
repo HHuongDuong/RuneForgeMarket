@@ -35,8 +35,7 @@ entity wallets {
 
 entity currencies {
   +id : int <<PK>>
-  code : varchar(20)
-  name : varchar(20)
+  name : enum
 }
 
 entity wallet_balance {
