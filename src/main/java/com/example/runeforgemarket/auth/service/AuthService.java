@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class authService {
+public class AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService userDetailsService;
@@ -31,7 +31,7 @@ public class authService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public authService(
+    public AuthService(
         AuthenticationManager authenticationManager,
         CustomUserDetailsService userDetailsService,
         UserRepository userRepository,

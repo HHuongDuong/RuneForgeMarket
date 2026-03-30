@@ -4,7 +4,7 @@ import com.example.runeforgemarket.auth.dto.AuthResponse;
 import com.example.runeforgemarket.auth.dto.LoginRequest;
 import com.example.runeforgemarket.auth.dto.RefreshRequest;
 import com.example.runeforgemarket.auth.dto.RegisterRequest;
-import com.example.runeforgemarket.auth.service.authService;
+import com.example.runeforgemarket.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,11 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
-public class authController {
+public class AuthController {
 
-    private final authService authService;
+    private final AuthService authService;
 
-    public authController(authService authService) {
+    public AuthController(AuthService authService) {
         this.authService = authService;
     }
 
