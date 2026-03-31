@@ -43,6 +43,7 @@ public class WalletController {
         return walletService.getTransactions(currencyId);
     }
 
+    // For testing purposes, in production this should be protected and only allow certain ref types
     @PostMapping("/transactions")
     public WalletTransactionResponse applyTransaction(
         @Valid @RequestBody CreateWalletTransactionRequest request
