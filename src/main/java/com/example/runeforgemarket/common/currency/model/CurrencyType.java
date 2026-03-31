@@ -1,4 +1,4 @@
-package com.example.runeforgemarket.common.currency;
+package com.example.runeforgemarket.common.currency.model;
 
 public enum CurrencyType {
     GOLD,

@@ -3,7 +3,7 @@ package com.example.runeforgemarket.wallet.model;
 import java.io.Serializable;
 import java.util.Objects;
 
-import com.example.runeforgemarket.common.currency.Currency;
+import com.example.runeforgemarket.common.currency.model.Currency;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

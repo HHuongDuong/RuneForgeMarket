@@ -1,5 +1,15 @@
 package com.example.runeforgemarket.auth.service;
 
+import java.util.HashSet;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.example.runeforgemarket.auth.config.CustomUserDetailsService;
 import com.example.runeforgemarket.auth.config.JwtService;
 import com.example.runeforgemarket.auth.dto.AuthResponse;
@@ -11,15 +21,8 @@ import com.example.runeforgemarket.user.model.RoleName;
 import com.example.runeforgemarket.user.model.User;
 import com.example.runeforgemarket.user.repository.RoleRepository;
 import com.example.runeforgemarket.user.repository.UserRepository;
+
 import jakarta.transaction.Transactional;
-import java.util.HashSet;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
@@ -49,14 +52,14 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.username())) {
+        if (userRepository.userExistsByUsername(request.username())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username already exists");
         }
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.userExistsByEmail(request.email())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
         }
 
-        Role role = roleRepository.findByName(RoleName.USER)
+        Role role = roleRepository.findRoleByName(RoleName.USER)
             .orElseGet(() -> {
                 Role newRole = new Role();
                 newRole.setName(RoleName.USER);
@@ -118,11 +121,11 @@ public class AuthService {
 
     private User findUserByUsernameOrEmail(String usernameOrEmail) {
         if (usernameOrEmail.contains("@")) {
-            return userRepository.findByEmail(usernameOrEmail)
+            return userRepository.findUserByEmail(usernameOrEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         }
 
-        return userRepository.findByUsername(usernameOrEmail)
+        return userRepository.findUserByUsername(usernameOrEmail)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
     }
 }

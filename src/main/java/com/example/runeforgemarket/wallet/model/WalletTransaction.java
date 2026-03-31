@@ -2,7 +2,7 @@ package com.example.runeforgemarket.wallet.model;
 
 import java.time.Instant;
 
-import com.example.runeforgemarket.common.currency.Currency;
+import com.example.runeforgemarket.common.currency.model.Currency;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,10 +36,10 @@ public class WalletTransaction {
     private Long balanceAfter;
 
     @Column(name = "type", nullable = false, length = 20)
-    private String type;
+    private TransactionType type;
 
     @Column(name = "ref_type", nullable = false, length = 20)
-    private String refType;
+    private TransactionRefType refType;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -91,19 +91,19 @@ public class WalletTransaction {
         this.balanceAfter = balanceAfter;
     }
 
-    public String getType() {
+    public TransactionType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(TransactionType type) {
         this.type = type;
     }
 
-    public String getRefType() {
+    public TransactionRefType getRefType() {
         return refType;
     }
 
-    public void setRefType(String refType) {
+    public void setRefType(TransactionRefType refType) {
         this.refType = refType;
     }
 

@@ -1,4 +1,4 @@
-package com.example.runeforgemarket.common.currency;
+package com.example.runeforgemarket.common.currency.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

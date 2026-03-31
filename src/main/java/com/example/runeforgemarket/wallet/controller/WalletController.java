@@ -31,15 +31,22 @@ public class WalletController {
         return walletService.getBalance(currencyId);
     }
 
+    @GetMapping("/balances")
+    public List<WalletBalanceResponse> getBalances() {
+        return walletService.getBalances();
+    }
+
     @GetMapping("/transactions")
-    public List<WalletTransactionResponse> getTransactions(@RequestParam Integer currencyId) {
+    public List<WalletTransactionResponse> getTransactions(
+        @RequestParam(required = false) Integer currencyId
+    ) {
         return walletService.getTransactions(currencyId);
     }
 
     @PostMapping("/transactions")
-    public WalletTransactionResponse addTransaction(
+    public WalletTransactionResponse applyTransaction(
         @Valid @RequestBody CreateWalletTransactionRequest request
     ) {
-        return walletService.addTransaction(request);
+        return walletService.applyTransaction(request);
     }
 }

@@ -1,16 +1,18 @@
 package com.example.runeforgemarket.wallet.service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.example.runeforgemarket.common.currency.Currency;
+import com.example.runeforgemarket.common.currency.model.Currency;
+import com.example.runeforgemarket.common.currency.service.CurrencyService;
 import com.example.runeforgemarket.user.model.User;
-import com.example.runeforgemarket.user.repository.UserRepository;
+import com.example.runeforgemarket.user.service.CurrentUserService;
 import com.example.runeforgemarket.wallet.dto.CreateWalletTransactionRequest;
 import com.example.runeforgemarket.wallet.dto.WalletBalanceResponse;
 import com.example.runeforgemarket.wallet.dto.WalletTransactionResponse;
@@ -18,7 +20,7 @@ import com.example.runeforgemarket.wallet.model.Wallet;
 import com.example.runeforgemarket.wallet.model.WalletBalance;
 import com.example.runeforgemarket.wallet.model.WalletBalance.WalletBalanceId;
 import com.example.runeforgemarket.wallet.model.WalletTransaction;
-import com.example.runeforgemarket.wallet.repository.CurrencyRepository;
+import com.example.runeforgemarket.wallet.model.TransactionType;
 import com.example.runeforgemarket.wallet.repository.WalletBalanceRepository;
 import com.example.runeforgemarket.wallet.repository.WalletRepository;
 import com.example.runeforgemarket.wallet.repository.WalletTransactionRepository;
@@ -31,55 +33,117 @@ public class WalletService {
     private final WalletRepository walletRepository;
     private final WalletBalanceRepository walletBalanceRepository;
     private final WalletTransactionRepository walletTransactionRepository;
-    private final CurrencyRepository currencyRepository;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
+    private final CurrencyService currencyService;
 
     public WalletService(
         WalletRepository walletRepository,
         WalletBalanceRepository walletBalanceRepository,
         WalletTransactionRepository walletTransactionRepository,
-        CurrencyRepository currencyRepository,
-        UserRepository userRepository
+        CurrentUserService currentUserService,
+        CurrencyService currencyService
     ) {
         this.walletRepository = walletRepository;
         this.walletBalanceRepository = walletBalanceRepository;
         this.walletTransactionRepository = walletTransactionRepository;
-        this.currencyRepository = currencyRepository;
-        this.userRepository = userRepository;
+        this.currentUserService = currentUserService;
+        this.currencyService = currencyService;
     }
 
+    @Transactional
     public WalletBalanceResponse getBalance(Integer currencyId) {
         Wallet wallet = getOrCreateWallet();
-        Currency currency = getCurrency(currencyId);
+        Currency currency = currencyService.getCurrency(currencyId);
 
-        WalletBalance balance = walletBalanceRepository
-            .findById(new WalletBalanceId(wallet.getId(), currency.getId()))
-            .orElseGet(() -> createZeroBalance(wallet, currency));
+        Map<Integer, WalletBalance> balanceMap = walletBalanceRepository
+            .findByWalletId(wallet.getId())
+            .stream()
+            .collect(Collectors.toMap(
+                wb -> wb.getCurrency().getId(),
+                wb -> wb
+            ));
+
+        WalletBalance balance = balanceMap.get(currency.getId());
+        if (balance == null) {
+            balance = createZeroBalance(wallet, currency);
+        }
 
         return new WalletBalanceResponse(wallet.getId(), currency.getId(), balance.getBalance());
     }
 
+    @Transactional
+    public List<WalletBalanceResponse> getBalances() {
+        Wallet wallet = getOrCreateWallet();
+        Map<Integer, WalletBalance> balanceMap = walletBalanceRepository
+            .findByWalletId(wallet.getId())
+            .stream()
+            .collect(Collectors.toMap(
+                wb -> wb.getCurrency().getId(),
+                wb -> wb
+            ));
+
+        List<WalletBalance> newBalances = new ArrayList<>();
+        List<WalletBalanceResponse> responses = currencyService.getAllCurrencies().stream()
+            .map(currency -> {
+                WalletBalance balance = balanceMap.get(currency.getId());
+                if (balance == null) {
+                    balance = buildZeroBalance(wallet, currency);
+                    newBalances.add(balance);
+                }
+
+                return new WalletBalanceResponse(
+                    balance.getWallet().getId(),
+                    balance.getCurrency().getId(),
+                    balance.getBalance()
+                );
+            })
+            .toList();
+
+        if (!newBalances.isEmpty()) {
+            walletBalanceRepository.saveAll(newBalances);
+        }
+
+        return responses;
+    }
+
     public List<WalletTransactionResponse> getTransactions(Integer currencyId) {
         Wallet wallet = getOrCreateWallet();
-        Currency currency = getCurrency(currencyId);
+        if (currencyId == null) {
+            return walletTransactionRepository.findByWallet(wallet.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        }
 
-        return walletTransactionRepository
-            .findByWallet_IdAndCurrency_IdOrderByCreatedAtDesc(wallet.getId(), currency.getId())
+        Currency currency = currencyService.getCurrency(currencyId);
+        return walletTransactionRepository.findByWalletAndCurrency(wallet.getId(), currency.getId())
             .stream()
             .map(this::toResponse)
             .toList();
     }
 
     @Transactional
-    public WalletTransactionResponse addTransaction(CreateWalletTransactionRequest request) {
+    public WalletTransactionResponse applyTransaction(CreateWalletTransactionRequest request) {
+        if (request.amount() == null || request.amount() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
+        }
+        if (request.type() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction type is required");
+        }
+
         Wallet wallet = getOrCreateWallet();
-        Currency currency = getCurrency(request.currencyId());
+        Currency currency = currencyService.getCurrency(request.currencyId());
 
         WalletBalance balance = walletBalanceRepository
             .findById(new WalletBalanceId(wallet.getId(), currency.getId()))
             .orElseGet(() -> createZeroBalance(wallet, currency));
 
-        long newBalance = balance.getBalance() + request.amount();
+        if (request.type() == TransactionType.DEBIT && balance.getBalance() < request.amount()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient balance");
+        }
+
+        long delta = calculateDelta(request.type(), request.amount());
+        long newBalance = balance.getBalance() + delta;
         balance.setBalance(newBalance);
         walletBalanceRepository.save(balance);
 
@@ -96,28 +160,13 @@ public class WalletService {
     }
 
     private Wallet getOrCreateWallet() {
-        User user = getCurrentUser();
-        return walletRepository.findByUserId(user.getId())
+        User user = currentUserService.getCurrentUser();
+        return walletRepository.findWalletByUserId(user.getId())
             .orElseGet(() -> {
                 Wallet wallet = new Wallet();
                 wallet.setUserId(user.getId());
                 return walletRepository.save(wallet);
             });
-    }
-
-    private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getName() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthenticated");
-        }
-
-        return userRepository.findByUsername(auth.getName())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-    }
-
-    private Currency getCurrency(Integer currencyId) {
-        return currencyRepository.findById(currencyId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Currency not found"));
     }
 
     private WalletBalance createZeroBalance(Wallet wallet, Currency currency) {
@@ -127,6 +176,15 @@ public class WalletService {
         balance.setCurrency(currency);
         balance.setBalance(0L);
         return walletBalanceRepository.save(balance);
+    }
+
+    private WalletBalance buildZeroBalance(Wallet wallet, Currency currency) {
+        WalletBalance balance = new WalletBalance();
+        balance.setId(new WalletBalanceId(wallet.getId(), currency.getId()));
+        balance.setWallet(wallet);
+        balance.setCurrency(currency);
+        balance.setBalance(0L);
+        return balance;
     }
 
     private WalletTransactionResponse toResponse(WalletTransaction tx) {
@@ -140,5 +198,17 @@ public class WalletService {
             tx.getRefType(),
             tx.getCreatedAt()
         );
+    }
+
+    private long calculateDelta(TransactionType type, long amount) {
+        if (type == TransactionType.DEBIT) {
+            return -amount;
+        }
+
+        if (type == TransactionType.ADJUST) {
+            return amount;
+        }
+
+        return amount;
     }
 }
