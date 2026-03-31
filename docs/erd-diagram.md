@@ -64,10 +64,11 @@ entity wallet_transactions {
 entity item_template {
   +id : bigint <<PK>>
   name : varchar(100)
-  type : varchar(50)
+  type : enum
   rarity : enum
   base_stats : JSON
   is_npc_sold : boolean
+  stackable : boolean
 }
 
 entity items {

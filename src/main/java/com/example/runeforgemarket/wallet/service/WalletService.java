@@ -16,11 +16,11 @@ import com.example.runeforgemarket.user.service.CurrentUserService;
 import com.example.runeforgemarket.wallet.dto.CreateWalletTransactionRequest;
 import com.example.runeforgemarket.wallet.dto.WalletBalanceResponse;
 import com.example.runeforgemarket.wallet.dto.WalletTransactionResponse;
+import com.example.runeforgemarket.wallet.model.TransactionType;
 import com.example.runeforgemarket.wallet.model.Wallet;
 import com.example.runeforgemarket.wallet.model.WalletBalance;
 import com.example.runeforgemarket.wallet.model.WalletBalance.WalletBalanceId;
 import com.example.runeforgemarket.wallet.model.WalletTransaction;
-import com.example.runeforgemarket.wallet.model.TransactionType;
 import com.example.runeforgemarket.wallet.repository.WalletBalanceRepository;
 import com.example.runeforgemarket.wallet.repository.WalletRepository;
 import com.example.runeforgemarket.wallet.repository.WalletTransactionRepository;
@@ -124,7 +124,7 @@ public class WalletService {
 
     @Transactional
     public WalletTransactionResponse applyTransaction(CreateWalletTransactionRequest request) {
-        if (request.amount() == null || request.amount() <= 0) {
+        if (request.amount() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
         }
         if (request.type() == null) {
