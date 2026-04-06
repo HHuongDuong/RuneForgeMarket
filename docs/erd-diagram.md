@@ -86,7 +86,7 @@ entity npc_shop {
   --
   <<PK>> (template_id, currency_id)
 }
-
+<!--npc-shop bán đồ thông dụng như bình máu, bình mana, ... -->
 ' =======================
 ' MARKETPLACE
 ' =======================
@@ -98,6 +98,7 @@ entity listings {
   status : enum
   created_at : timestamp
 }
+<!--entity liệt kê đồ user đăng bán-->
 
 entity listing_prices {
   +listing_id : bigint
@@ -114,6 +115,7 @@ entity orders {
   status : enum
   created_at : timestamp
 }
+<!-- nghe tên là hiểu-->
 
 entity order_items {
   +id : bigint <<PK>>
@@ -124,10 +126,10 @@ entity order_items {
 }
 
 ' =======================
-' BLACK MARKET
+' NIGHT MARKET
 ' =======================
 
-entity black_market_offers {
+entity night_market_offers {
   +id : bigint <<PK>>
   event_id : bigint
   user_id : bigint
@@ -139,7 +141,7 @@ entity black_market_offers {
   created_at : timestamp
 }
 
-entity black_market_prices {
+entity night_market_prices {
   +offer_id : bigint
   +currency_id : int
   price : bigint
@@ -155,6 +157,7 @@ entity event {
   end_time : timestamp
   created_at : timestamp
 }
+<!--event giảm giá đồ-->
 
 ' =======================
 ' RELATIONSHIPS
