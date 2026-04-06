@@ -78,7 +78,7 @@ entity items {
   status : enum
   stats : JSON
 }
-
+<!--Từ đây xuống chưa implement -->
 entity npc_shop {
   +template_id : bigint
   +currency_id : int
