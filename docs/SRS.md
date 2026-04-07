@@ -86,22 +86,71 @@ Validation rules for base stats:
 - These features are represented in the data model for future implementation.
 
 ### 3.6 Sequence Flows
-Login flow:
-1. Client sends credentials to POST /api/auth/login.
-2. Service validates user and password.
-3. Service returns access and refresh tokens.
+Implemented flows:
+1. Login flow
+  1. Client sends credentials to POST /api/auth/login.
+  2. Service validates user and password.
+  3. Service returns access and refresh tokens.
 
-Purchase flow (marketplace):
-1. Buyer requests listing details.
-2. Buyer confirms purchase with currency and price.
-3. Service debits buyer wallet, credits seller wallet, records transactions.
-4. Service creates order and order_items, updates listing status.
+2. Register flow
+  1. Client sends data to POST /api/auth/register.
+  2. Service validates uniqueness and hashes password.
+  3. Service creates user and assigns USER role.
+  4. Service returns access and refresh tokens.
 
-Trade flow (player to player):
-1. Player A initiates trade with Player B.
-2. Service validates item ownership and wallet balances.
-3. Service transfers item ownership and applies wallet transactions.
-4. Service logs transaction with ref type PLAYER_TRADE.
+3. Refresh token flow
+  1. Client sends refresh token to POST /api/auth/refresh.
+  2. Service validates token type and expiration.
+  3. Service returns new access and refresh tokens.
+
+4. Wallet transaction flow
+  1. Client posts to POST /api/wallet/transactions.
+  2. Service validates amount and balance (for DEBIT).
+  3. Service updates wallet balance.
+  4. Service records wallet_transactions entry.
+
+5. Wallet balance flow
+  1. Client calls GET /api/wallet/balance or GET /api/wallet/balances.
+  2. Service loads wallet balances; creates missing zero balances.
+  3. Service returns balances.
+
+6. Item template flow
+  1. Client posts to POST /api/items/create_template.
+  2. Service validates baseStats.
+  3. Service stores item template.
+
+7. Item creation flow
+  1. Client posts to POST /api/items/create_item.
+  2. Service loads template.
+  3. Service generates stats from template.
+  4. Service saves item.
+
+8. Listing lifecycle flow
+  1. Seller creates listing (POST /api/listings).
+  2. Listing becomes ACTIVE with a price.
+  3. Seller can cancel (POST /api/listings/{id}/cancel).
+  4. System can lock (POST /api/listings/{id}/lock) to avoid double-buy.
+  5. System marks sold (POST /api/listings/{id}/sold).
+
+Planned flows (not implemented yet):
+1. Purchase flow (marketplace)
+  1. Buyer requests listing details.
+  2. System locks listing.
+  3. Buyer confirms purchase with currency and price.
+  4. System debits buyer wallet, credits seller wallet, records transactions.
+  5. System creates order and order_items, updates listing to SOLD.
+
+2. Trade flow (player to player)
+  1. Player A initiates trade with Player B.
+  2. System validates item ownership and wallet balances.
+  3. System transfers item ownership and applies wallet transactions.
+  4. System logs transaction with ref type PLAYER_TRADE.
+
+3. Black market offer flow
+  1. Event creates offers for users.
+  2. User views offers and prices.
+  3. User purchases offer with wallet transaction.
+  4. System records black_market_offers and black_market_prices usage.
 
 ## 4. External Interface Requirements
 ### 4.1 REST API (Current Scope)
