@@ -9,7 +9,7 @@ The system provides:
 - User authentication and role management.
 - Item templates and item instances with JSON stats.
 - Wallet balances in multiple currencies and wallet transactions.
-- Marketplace, orders, black market, and event-related data structures (per ERD).
+- Marketplace, orders, night market, and event-related data structures (per ERD).
 
 ### 1.3 Definitions
 - Currency: In-game money types (e.g., GOLD, SILVER, COPPER).
@@ -81,7 +81,7 @@ Validation rules for base stats:
 - Listings, listing prices, orders, and order items are defined in ERD.
 - These features are represented in the data model for future implementation.
 
-### 3.5 Black Market and Events (Data Model)
+### 3.5 Night Market and Events (Data Model)
 - Event-driven offers and prices are defined in ERD.
 - These features are represented in the data model for future implementation.
 
@@ -146,11 +146,11 @@ Planned flows (not implemented yet):
   3. System transfers item ownership and applies wallet transactions.
   4. System logs transaction with ref type PLAYER_TRADE.
 
-3. Black market offer flow
+3. Night market offer flow
   1. Event creates offers for users.
   2. User views offers and prices.
   3. User purchases offer with wallet transaction.
-  4. System records black_market_offers and black_market_prices usage.
+  4. System records night_market_offers and night_market_prices usage.
 
 ## 4. External Interface Requirements
 ### 4.1 REST API (Current Scope)
@@ -177,7 +177,7 @@ Key entities from ERD:
 - wallets, currencies, wallet_balance, wallet_transactions
 - item_template, items, npc_shop
 - listings, listing_prices, orders, order_items
-- black_market_offers, black_market_prices, event
+- night_market_offers, night_market_prices, event
 
 ### 4.3 Data Dictionary
 users:
@@ -269,7 +269,7 @@ order_items:
 - currency_id (int, FK -> currencies.id)
 - price (bigint)
 
-black_market_offers:
+night_market_offers:
 - id (bigint, PK)
 - event_id (bigint, FK -> event.id)
 - user_id (bigint, FK -> users.id)
@@ -280,8 +280,8 @@ black_market_offers:
 - status (enum)
 - created_at (timestamp)
 
-black_market_prices:
-- offer_id (bigint, FK -> black_market_offers.id)
+night_market_prices:
+- offer_id (bigint, FK -> night_market_offers.id)
 - currency_id (int, FK -> currencies.id)
 - price (bigint)
 - PK (offer_id, currency_id)
@@ -412,5 +412,5 @@ Response:
 ## 6. Future Enhancements
 - Full marketplace operations (list, buy, sell, cancel).
 - Order processing and item delivery.
-- Black market event scheduling and offers.
+- Night market event scheduling and offers.
 - Audit logging for wallet operations.
