@@ -6,6 +6,8 @@ import com.example.runeforgemarket.common.currency.model.Currency;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,9 +37,11 @@ public class WalletTransaction {
     @Column(name = "balance_after", nullable = false)
     private Long balanceAfter;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
     private TransactionType type;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "ref_type", nullable = false, length = 20)
     private TransactionRefType refType;
 

@@ -85,6 +85,24 @@ Validation rules for base stats:
 - Event-driven offers and prices are defined in ERD.
 - These features are represented in the data model for future implementation.
 
+### 3.6 Sequence Flows
+Login flow:
+1. Client sends credentials to POST /api/auth/login.
+2. Service validates user and password.
+3. Service returns access and refresh tokens.
+
+Purchase flow (marketplace):
+1. Buyer requests listing details.
+2. Buyer confirms purchase with currency and price.
+3. Service debits buyer wallet, credits seller wallet, records transactions.
+4. Service creates order and order_items, updates listing status.
+
+Trade flow (player to player):
+1. Player A initiates trade with Player B.
+2. Service validates item ownership and wallet balances.
+3. Service transfers item ownership and applies wallet transactions.
+4. Service logs transaction with ref type PLAYER_TRADE.
+
 ## 4. External Interface Requirements
 ### 4.1 REST API (Current Scope)
 - Auth:
@@ -111,6 +129,230 @@ Key entities from ERD:
 - item_template, items, npc_shop
 - listings, listing_prices, orders, order_items
 - black_market_offers, black_market_prices, event
+
+### 4.3 Data Dictionary
+users:
+- id (bigint, PK)
+- username (varchar(50))
+- email (string)
+- password_hash (string)
+- created_at (timestamp)
+
+roles:
+- id (int, PK)
+- name (enum)
+
+user_roles:
+- user_id (bigint, FK -> users.id)
+- role_id (int, FK -> roles.id)
+- PK (user_id, role_id)
+
+wallets:
+- id (bigint, PK)
+- user_id (bigint, FK -> users.id)
+
+currencies:
+- id (int, PK)
+- name (enum)
+
+wallet_balance:
+- wallet_id (bigint, FK -> wallets.id)
+- currency_id (int, FK -> currencies.id)
+- balance (bigint)
+- PK (wallet_id, currency_id)
+
+wallet_transactions:
+- id (bigint, PK)
+- wallet_id (bigint, FK -> wallets.id)
+- currency_id (int, FK -> currencies.id)
+- amount (bigint)
+- balance_after (bigint)
+- type (varchar(20))
+- ref_type (varchar(20))
+- created_at (timestamp)
+
+item_template:
+- id (bigint, PK)
+- name (varchar(100))
+- type (enum)
+- rarity (enum)
+- base_stats (json)
+- is_npc_sold (boolean)
+- stackable (boolean)
+
+items:
+- id (bigint, PK)
+- template_id (bigint, FK -> item_template.id)
+- user_id (bigint, FK -> users.id)
+- status (enum)
+- stats (json)
+
+npc_shop:
+- template_id (bigint, FK -> item_template.id)
+- currency_id (int, FK -> currencies.id)
+- price (bigint)
+- PK (template_id, currency_id)
+
+listings:
+- id (bigint, PK)
+- item_id (bigint, FK -> items.id)
+- seller_id (bigint, FK -> users.id)
+- status (enum)
+- created_at (timestamp)
+
+listing_prices:
+- listing_id (bigint, FK -> listings.id)
+- currency_id (int, FK -> currencies.id)
+- price (bigint)
+- PK (listing_id, currency_id)
+
+orders:
+- id (bigint, PK)
+- buyer_id (bigint, FK -> users.id)
+- seller_id (bigint, FK -> users.id)
+- status (enum)
+- created_at (timestamp)
+
+order_items:
+- id (bigint, PK)
+- order_id (bigint, FK -> orders.id)
+- item_id (bigint, FK -> items.id)
+- currency_id (int, FK -> currencies.id)
+- price (bigint)
+
+black_market_offers:
+- id (bigint, PK)
+- event_id (bigint, FK -> event.id)
+- user_id (bigint, FK -> users.id)
+- template_id (bigint, FK -> item_template.id)
+- or_price (bigint)
+- discount_percent (int)
+- expires_at (timestamp)
+- status (enum)
+- created_at (timestamp)
+
+black_market_prices:
+- offer_id (bigint, FK -> black_market_offers.id)
+- currency_id (int, FK -> currencies.id)
+- price (bigint)
+- PK (offer_id, currency_id)
+
+event:
+- id (bigint, PK)
+- name (varchar(50))
+- status (varchar(20))
+- start_time (timestamp)
+- end_time (timestamp)
+- created_at (timestamp)
+
+### 4.4 API Examples
+Auth - register:
+POST /api/auth/register
+Request:
+{
+  "username": "player1",
+  "email": "player1@example.com",
+  "password": "secret123"
+}
+Response:
+{
+  "accessToken": "...",
+  "refreshToken": "...",
+  "tokenType": "Bearer"
+}
+
+Auth - login:
+POST /api/auth/login
+Request:
+{
+  "usernameOrEmail": "player1",
+  "password": "secret123"
+}
+Response:
+{
+  "accessToken": "...",
+  "refreshToken": "...",
+  "tokenType": "Bearer"
+}
+
+Wallet - get balance:
+GET /api/wallet/balance?currencyId=1
+Response:
+{
+  "walletId": 10,
+  "currencyId": 1,
+  "balance": 1500
+}
+
+Wallet - get balances:
+GET /api/wallet/balances
+Response:
+[
+  {"walletId": 10, "currencyId": 1, "balance": 1500},
+  {"walletId": 10, "currencyId": 2, "balance": 900}
+]
+
+Wallet - apply transaction:
+POST /api/wallet/transactions
+Request:
+{
+  "currencyId": 1,
+  "amount": 200,
+  "type": "DEBIT",
+  "refType": "PLAYER_TRADE"
+}
+Response:
+{
+  "id": 55,
+  "walletId": 10,
+  "currencyId": 1,
+  "amount": 200,
+  "balanceAfter": 1300,
+  "type": "DEBIT",
+  "refType": "PLAYER_TRADE",
+  "createdAt": "2026-04-06T10:00:00Z"
+}
+
+Items - create item:
+POST /api/items/create_item
+Request:
+{
+  "ownerId": 10,
+  "templateId": 3,
+  "status": "INVENTORY"
+}
+Response:
+{
+  "id": 100,
+  "name": "Iron Sword",
+  "ownerId": 10,
+  "type": "WEAPON",
+  "rarity": "COMMON",
+  "status": "INVENTORY",
+  "stats": {"attack": 12, "speed": 2}
+}
+
+Item template - create:
+POST /api/items/create_template
+Request:
+{
+  "name": "Iron Sword",
+  "type": "WEAPON",
+  "rarity": "COMMON",
+  "baseStats": {"attack": 10, "speed": 2},
+  "isNpcTradeable": true,
+  "stackable": false
+}
+Response:
+{
+  "id": 3,
+  "name": "Iron Sword",
+  "type": "WEAPON",
+  "rarity": "COMMON",
+  "baseStats": {"attack": 10, "speed": 2},
+  "isNpcTradeable": true,
+  "stackable": false
+}
 
 ## 5. Non-Functional Requirements
 - NFR-01: All services must run on Java 21.
