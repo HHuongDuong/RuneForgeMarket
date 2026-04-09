@@ -102,7 +102,7 @@ entity listings {
 
 entity listing_prices {
   +listing_id : bigint
-  +currency_id : int
+  currency_id : int
   price : bigint
   --
   <<PK>> (listing_id, currency_id)

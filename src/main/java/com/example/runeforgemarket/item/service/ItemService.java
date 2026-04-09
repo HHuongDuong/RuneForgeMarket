@@ -13,17 +13,25 @@ import com.example.runeforgemarket.item.model.Item;
 import com.example.runeforgemarket.item.model.ItemTemplate;
 import com.example.runeforgemarket.item.repository.ItemRepository;
 import com.example.runeforgemarket.item.repository.ItemTemplateRepository;
+import com.example.runeforgemarket.user.model.User;
+import com.example.runeforgemarket.user.repository.UserRepository;
 
 
 @Service
 public class ItemService {
     private final ItemRepository itemRepository;
     private final ItemTemplateRepository itemTemplateRepository;
+    private final UserRepository userRepository;
 
 
-    public ItemService(ItemRepository itemRepository, ItemTemplateRepository itemTemplateRepository) {
+    public ItemService(
+        ItemRepository itemRepository,
+        ItemTemplateRepository itemTemplateRepository,
+        UserRepository userRepository
+    ) {
         this.itemRepository = itemRepository;
         this.itemTemplateRepository = itemTemplateRepository;
+        this.userRepository = userRepository;
     }
 
     public ItemResponse getItemById(Long id) {
@@ -33,7 +41,7 @@ public class ItemService {
         return new ItemResponse(
             item.getId(),
             item.getTemplate().getName(),
-            item.getOwnerId(),
+            item.getOwner().getId(),
             item.getTemplate().getType(),
             item.getTemplate().getRarity(),
             item.getStatus(),
@@ -42,31 +50,35 @@ public class ItemService {
     }
 
     public List<ItemResponse> getOwnerItem(Long ownerId) {
-        Item item = itemRepository.findByOwnerId(ownerId)
-            .orElseThrow(() -> new RuntimeException("Item not found"));
-
-        return List.of(new ItemResponse(
-            item.getId(),
-            item.getTemplate().getName(),
-            item.getOwnerId(),
-            item.getTemplate().getType(),
-            item.getTemplate().getRarity(),
-            item.getStatus(),
-            item.getStats()
-        ));
-    }
-
-    public List<ItemResponse> getItemByStatus(Long ownerId, String status) {
-        List<Item> items = itemRepository.findByOwnerId(ownerId)
-            .stream()
-            .filter(item -> item.getStatus().name().equalsIgnoreCase(status))
-            .toList();
+        List<Item> items = itemRepository.findAllByOwnerId(ownerId);
 
         return items.stream()
             .map(item -> new ItemResponse(
                 item.getId(),
                 item.getTemplate().getName(),
-                item.getOwnerId(),
+                item.getOwner().getId(),
+                item.getTemplate().getType(),
+                item.getTemplate().getRarity(),
+                item.getStatus(),
+                item.getStats()
+            ))
+            .toList();
+    }
+
+    public List<ItemResponse> getItemByStatus(Long ownerId, String status) {
+        List<Item> items = itemRepository.findAllByOwnerId(ownerId)
+            .stream()
+            .filter(item -> item.getStatus().name().equalsIgnoreCase(status))
+            .toList();
+        if (items.isEmpty()) {
+            throw new RuntimeException("Item not found");
+        }
+
+        return items.stream()
+            .map(item -> new ItemResponse(
+                item.getId(),
+                item.getTemplate().getName(),
+                item.getOwner().getId(),
                 item.getTemplate().getType(),
                 item.getTemplate().getRarity(),
                 item.getStatus(),
@@ -78,7 +90,7 @@ public class ItemService {
     public Item createItem(CreateItemRequest request) {
         // Logic to create item based on template and assign to owner
         Item item = new Item();
-        item.setOwnerId(request.ownerId());
+        item.setOwner(resolveOwner(request.ownerId()));
         // Set other properties based on templateId
         item.setTemplate(itemTemplateRepository.findById(request.templateId()).orElseThrow(() -> new RuntimeException("Template not found")));
         item.setStatus(request.status());
@@ -103,6 +115,7 @@ public class ItemService {
                 int baseValue = number.intValue();
                 if (item.getTemplate().getRarity() != null  && item.getTemplate().getStackable() != true) {
                     switch (item.getTemplate().getRarity()) {
+                        case UNCOMMON -> baseValue = baseValue;
                         case COMMON -> baseValue += (int) (Math.random() * 4); // Add 0-3 for common items
                         case RARE -> baseValue += (int) (Math.random() * 7) + 3; // Add 3-9 for rare items
                         case EPIC -> baseValue += (int) (Math.random() * 6) + 10; // Add 10-15 for epic items
@@ -123,7 +136,7 @@ public class ItemService {
         Item item = itemRepository.findById(itemId)
             .orElseThrow(() -> new RuntimeException("Item not found"));
 
-        item.setOwnerId(newOwnerId);
+        item.setOwner(resolveOwner(newOwnerId));
         itemRepository.save(item);
     }
 
@@ -202,9 +215,14 @@ public class ItemService {
     public Item updateItem(Long itemId, CreateItemRequest request) {
         Item item = itemRepository.findById(itemId)
             .orElseThrow(() -> new RuntimeException("Item not found"));
-        item.setOwnerId(request.ownerId());
+        item.setOwner(resolveOwner(request.ownerId()));
         item.setTemplate(itemTemplateRepository.findById(request.templateId()).orElseThrow(() -> new RuntimeException("Template not found")));
         item.setStatus(request.status());
         return itemRepository.save(item);
+    }
+
+    private User resolveOwner(Long ownerId) {
+        return userRepository.findById(ownerId)
+            .orElseThrow(() -> new RuntimeException("Owner not found"));
     }
 }
